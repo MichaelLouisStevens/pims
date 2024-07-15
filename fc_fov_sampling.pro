@@ -153,11 +153,11 @@ function cup_response_numflux_spectrum, vz_lo, vz_hi, fv, effarea, ps_samples
 end
 
 
-
-pro integration_test, debug=debug
+function integration_test, debug=debug, n=n, samples = samples, params=params
 
 ; 0. define constants
-integration_pts = 1000.
+if n_elements(n) eq 0 then integration_pts = 1000. else integration_pts = n
+if n_elements(params) eq 0 then params =  {vx:100., vy:50., vz:250., w:50., n:1000.}
 spc_fov_radians = 44.*!dtor
 
 ; 1a. set up a vz spectrum range
@@ -166,10 +166,12 @@ vlo = 100. + 20.*findgen(nsteps)
 vhi = vlo+20.
 
 ; 1b. initialize an example velocity distribution function
-myvdf = new_vdf('maxwellian_vdf', {vx:100., vy:50., vz:250., w:50., n:1000.})
+myvdf = new_vdf('maxwellian_vdf', params)
 
 ; 2. initialize the samples, i.e.
-ps_samples = uniform_sample_frustum(vlo[0], vhi[0], spc_fov_radians, n=integration_pts)
+if n_elements(samples) eq 0 then  $
+  ps_samples = uniform_sample_frustum(vlo[0], vhi[0], spc_fov_radians, n=integration_pts) $
+  else ps_samples = samples
 
 ; 3. calculate the geometric factors
 effarea = calculate_effective_area_cm2(ps_samples.phi, ps_samples.theta)
@@ -188,4 +190,85 @@ if keyword_set(debug) then begin
   stop
 endif
  
+return, numflux 
+ 
+end
+
+pro timetest
+
+ns = [10, 33, 100, 333, 1000, 3333, 10000] 
+times = 0.*ns
+spc_fov_radians = 44.
+for j = 0, n_elements(ns)-1 do begin &$
+  t0 = systime(/seconds) &$
+  n=ns[j] &$
+  print, n &$
+  samples = uniform_sample_frustum(100., 200., spc_fov_radians, n=n) &$
+  for i = 0, 10 do foo = integration_test(n=n, samples = samples) &$
+  times[j] = (systime(/seconds)-t0)/10. &$
+endfor &$
+  
+print, dt_1000
+
+t0 = systime(/seconds)
+for i = 0, 100 do integration_test, n=100.
+dt_100 = (systime(/seconds)-t0)/100.
+
+; the computation time is linear in the number of points
+
+end
+
+
+
+pro restest
+
+
+  ns = [10, 33, 100, 333, 1000, 3333, 10000]
+  fluxes = fltarr(4, 30, 7, 10)
+  params =  {vx:100., vy:50., vz:150., w:100., n:1000.}
+  
+  spc_fov_radians = 44.
+  for j = 0, n_elements(ns)-1 do begin &$
+    n=ns[j] &$
+    print, n &$
+    for i = 0, 9 do fluxes[*,*,j,i] = integration_test(n=n, params = params) &$
+  endfor &$
+
+  means = mean(fluxes, dim = 4)
+  meansq = mean(fluxes^2, dim = 4)
+  var = sqrt(meansq - means^2)
+  pk = max(means[0,*,-1], pkloc)
+  y10 = (var/means)[0,pkloc,0]
+
+  p = plot(ns, (var/means)[0,pkloc,*], linestyle = '', symbol = 'o', /xlog, /ylog, xtitle = 'number of integration samples', $
+      ytitle = 'proportional error')
+  p2 = plot(ns, (var/means)[1,pkloc,*], linestyle = '', symbol = 'o', color = 'blue', /overplot)
+  p3 = plot(ns, (var/means)[2,pkloc,*], linestyle = '', symbol = 'o', color = 'green', /overplot)
+  p4 = plot(ns, (var/means)[3,pkloc,*], linestyle = '', symbol = 'o', color = 'red', /overplot)
+  p5 = plot(ns, y10/sqrt(0.1*ns), linestyle = '- - ', thick = 3, /overplot)
+  p.title = 'monte carlo integration on the faraday cup response $\n$ with uniform sampling, Mach=1 case'
+  p.xrange = [1, 1e5]
+  p.font_size = 14
+  p.yrange = [0.01, 10]
+
+  
+  
+  oplot, ns, 1./sqrt(0.1*ns), color = 254
+  oplot, minmax(ns), 0.1+[0,0]
+  
+  ; the precision goes like n^(-1/2)
+  ; for 1% precision, this implies that we would need about 1e6 integration points
+  ; that's way too many!
+  plot, means[0,*,-1]
+  for i = 0, 9 do oplot, fluxes[0,*,-1, i], psym = 1
+  
+  best = means[*,*,-1]
+  diffs = fluxes
+  for k = 0, 6 do for l = 0, 9 do diffs[*,*,k,l] = fluxes[*,*,k,l] - means
+  !p.multi = 0
+  
+  plot, ns, abs(fluxes[0,8,*,1] - means[0,8,*]), /xl, /yl
+  for j = 0, 9 do oplot, ns, abs(fluxes[0,8,*,j]- means[0,8, *]), psym = 6
+  
+
 end
