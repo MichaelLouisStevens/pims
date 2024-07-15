@@ -186,7 +186,7 @@ def CalculateTriantArea(theta, phi, HV_DC, HV_AC, plot=True):
         plt.text(30, 47, num2str(AreaA/sum*100) '%', color='black', fontsize = 14)
         plt.text(-55, 50, f'Area B = {AreaB}', color='black', fontsize = 14)
         plt.text(-50, 47, num2str(AreaB/sum*100) '%', color='black', fontsize = 14)
-        plt.text(25, -47, f'Area C = {AreaC}', color='black', fontsize = 14)
+        plt.text(25, -47, f'Area C = {AreaC}', color='black', fontsize = 14) # testing 
         plt.text(30, -50, num2str(AreaC/sum*100) '%', color='black', fontsize = 14)
     '''
 
