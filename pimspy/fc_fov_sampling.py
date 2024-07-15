@@ -113,7 +113,7 @@ def rescale_frustum_samples(zlower, zupper, input, debug=debug):
         newvol = (dz1*np.pi/3.)*(radius0^2 + radius1^2 + radius0*radius1)
         print, 'net volume transform error: ', 100.*(total(newdvol) - newvol)/newvol, '%'
 
-    return, {phi:input.phi, theta:input.theta, r:newr, dvol:newdvol, $
+    return, {phi:input.phi, theta:input.theta, r:newr, dvol:newdvol,
             zlower:zlower, zupper:zupper, alpha_rad:input.alpha_rad}
 
 def rays_to_xyzfc(input):
@@ -130,7 +130,7 @@ def calculate_effective_area_cm2(phi_rad, theta_rad):
 
 def cup_response_numflux_1step(vz_lo, vz_hi, fv, effarea, ps_samples):
     nsensors = (size(effarea, /dim))[0]
-    numflux = fltarr(nsensors)
+    numflux = np.zeros(nsensors)
     ps_samples = rescale_frustum_samples(vz_lo, vz_hi, ps_samples)
     vxyz = rays_to_xyzfc(ps_samples)
     f = fv.evaluate(vxyz)
